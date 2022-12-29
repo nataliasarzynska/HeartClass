@@ -3,7 +3,7 @@
 
 //--------------------------------------------------------------------------------
 /* Includes */
-/* MARYSIA TO ZMIENILA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+/* MARYSIA TO ZMIENILA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ateraz natalka*/
 
 #include <complex>
 #include <iostream>
