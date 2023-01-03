@@ -4,8 +4,6 @@
 #include "heart_class_m.h"
 //#include "waves.h"
 
-////PROBA aaaa
-
 using namespace std;
 
 const string signal_path = "100_MLII_filtered.dat";
@@ -160,7 +158,8 @@ void Classify_Type(std::vector<int> rPeaks, std::vector<int> P, std::vector<int>
 
     auto S = QRSend;
     auto Q = QRSonset; 
-
+    int poprawnyQRS = 0;
+    int niepoprawnyQRS = 0;
     for(const auto &r : rPeaks)
     {
         /* Search for Q wave in current complex */
@@ -171,21 +170,33 @@ void Classify_Type(std::vector<int> rPeaks, std::vector<int> P, std::vector<int>
                                                             // szukamy w liscie punktow S punkt wiekszy niz aktualny r - zwracana jest pozycja tego punktu  
 
         auto Q_begin = Q.begin();
-        cout << "Q BEGIN: " << Q_begin << "\n" << endl;
-
+        //cout << "Q BEGIN: " << Q_begin << "\n" << endl;
+        
         if(it_s != S.end())
         {
             /* Check if S wave detected or in specific range CHECK R_S INTERVAL*/
             int intervalRS = SamplesToMiliseconds(*it_s - r , fs);
             int intervalQRS = SamplesToMiliseconds(*it_s - *it_q, fs);
-
+            int QRS = *it_q - *it_s;
+            int QRSms = SamplesToMiliseconds(QRS, fs);
             
             cout << "R peak number: "<< r << "\n" << endl;
             cout << "Q peak (QRS start): "<< *it_q << "\n" << endl;
             cout << "S peak (QRS end): "<< *it_s << "\n" << endl;
             cout << "Interval RS time: "<< intervalRS << " ms\n" << endl;
             cout << "Interval QRS time: "<< intervalQRS << " ms\n" << endl;
+            cout << "QRS length: " << QRS << " \n" << endl;
+             cout << "QRS length (ms): " << QRSms << " ms\n" << endl;
 
+            if(QRSms < 260 && QRSms > 50) {
+                poprawnyQRS = poprawnyQRS+1;
+                cout << "Poprawny QRS!" << endl;
+                cout << poprawnyQRS << endl;
+            } else {
+                niepoprawnyQRS = niepoprawnyQRS+1;
+                cout << niepoprawnyQRS << endl;
+
+            }
             /* 
             // CHECKING THIS FUNCTION  AV
             if(interval < R_S_INTERVAL )
