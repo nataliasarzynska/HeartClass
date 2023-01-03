@@ -54,6 +54,7 @@ vector<int> loadQRSend() {
 
     return QRSend;
 }
+
 vector<int> loadQRSonset() {
     cout << "[INFO] Loading QRSend..." << endl;
 
@@ -82,31 +83,20 @@ vector<int> loadP() {
 // ------------------ CONSTANTS -----------------------
 
 /* Threshold interval based on Brugada algorithm */
-#define R_S_INTERVAL            360
+#define R_S_INTERVAL            60
 
 /* Number of intervals used for AV dissociation analysis */
 #define NUM_OF_INTERVALS        10
 
 /* Standard deviation threshold */
-#define STD_TH                  1000
+#define STD_TH                  10
 
 /* Threshold value for detecting correct QRSonset/end waves (in miliseconds) */
 #define QRS_INTERVAL            80
 
-/* Minimum points in possible cluster for dbscan algorithm */
-#define MINIMUM_POINTS          2
-
-/* Value of epsilon for dbscan algorithm */
-#define EPSILON                 2
-
 int SamplesToMiliseconds(int value, int fs)
 {
     return value*1000/fs;
-}
-
-enum correctEKG Check_if_correct_QRS(std::vector<int> rPeaks, std::vector<int> P, int currR)
-{
-    return INCORRECT;
 }
 
 enum type CheckAVDissociation(std::vector<int> rPeaks, std::vector<int> P, int currR) {
@@ -121,11 +111,10 @@ enum type CheckAVDissociation(std::vector<int> rPeaks, std::vector<int> P, int c
 
     for(uint8_t i = 0; i < NUM_OF_INTERVALS; i++)
     {
-        /* Check if reached end of signal (supraventricular by default) */
+        /* Check if reached end of signal (inna choroba by default) */
         if(itQRS == QRSonset.end() || itP == P.end())
-            return SUPRAVENTRICULAR;;
+            return DIFF_DISEASE;
 
-        /* currInterval = *itP++ - *itQRS++; */ // MOJA ZMIANA BO WYCHODZI UJEMNE BO P JEST PIERWSZE
         currInterval = *itQRS++ - *itP++;
         intervals.push_back(currInterval);
 
@@ -145,9 +134,11 @@ enum type CheckAVDissociation(std::vector<int> rPeaks, std::vector<int> P, int c
     }
     stdDev /= intervals.size();
     stdDev = std::sqrt(stdDev);
+    cout << stdDev << endl;
+    cout << "stdDev" << endl;
 
     if(stdDev < STD_TH)
-        return SUPRAVENTRICULAR;
+        return DIFF_DISEASE;
     else
         return VENTRICULAR;
 }
@@ -158,69 +149,60 @@ void Classify_Type(std::vector<int> rPeaks, std::vector<int> P, std::vector<int>
 
     auto S = QRSend;
     auto Q = QRSonset; 
-    int poprawnyQRS = 0;
-    int niepoprawnyQRS = 0;
+
     for(const auto &r : rPeaks)
     {
-        /* Search for Q wave in current complex */
-        auto it_q = std::lower_bound(Q.begin(), Q.end(), r); // ZLE PRZEZ TA FUNKCJE??
+        // Szukamy zalamka Q
+        auto it_q = std::lower_bound(Q.begin(), Q.end(), r); 
+        it_q -= 1;
 
-        /* Search for S wave in current complex */
-        auto it_s = std::upper_bound(S.begin(), S.end(), r);   // r to po kolei podawane kolejne z rPeakow
-                                                            // szukamy w liscie punktow S punkt wiekszy niz aktualny r - zwracana jest pozycja tego punktu  
-
-        auto Q_begin = Q.begin();
-        //cout << "Q BEGIN: " << Q_begin << "\n" << endl;
+        // Szukamy zalamka S
+        auto it_s = std::upper_bound(S.begin(), S.end(), r); 
         
         if(it_s != S.end())
         {
-            /* Check if S wave detected or in specific range CHECK R_S INTERVAL*/
             int intervalRS = SamplesToMiliseconds(*it_s - r , fs);
             int intervalQRS = SamplesToMiliseconds(*it_s - *it_q, fs);
-            int QRS = *it_q - *it_s;
+
+            int QRS = *it_s - *it_q;
             int QRSms = SamplesToMiliseconds(QRS, fs);
-            
-            cout << "R peak number: "<< r << "\n" << endl;
-            cout << "Q peak (QRS start): "<< *it_q << "\n" << endl;
-            cout << "S peak (QRS end): "<< *it_s << "\n" << endl;
-            cout << "Interval RS time: "<< intervalRS << " ms\n" << endl;
-            cout << "Interval QRS time: "<< intervalQRS << " ms\n" << endl;
-            cout << "QRS length: " << QRS << " \n" << endl;
-             cout << "QRS length (ms): " << QRSms << " ms\n" << endl;
 
-            if(QRSms < 260 && QRSms > 50) {
-                poprawnyQRS = poprawnyQRS+1;
-                cout << "Poprawny QRS!" << endl;
-                cout << poprawnyQRS << endl;
-            } else {
-                niepoprawnyQRS = niepoprawnyQRS+1;
-                cout << niepoprawnyQRS << endl;
+            if(QRSms < 180 && QRSms > 50) { // sprawdzenie czy to artefakt czy QRS
+                if(QRSms >= 120) {
+                    // szeroki - to znaczy ze cos jest nie tak!!!!!!
+                    // VR albo inna choroba
+                    if(intervalRS < R_S_INTERVAL )
+                    {
+                        // Sprawdzamy czy jest dysocjacja
+                        nextClassification.actType = CheckAVDissociation(rPeaks, P, r);            
 
-            }
-            /* 
-            // CHECKING THIS FUNCTION  AV
-            if(interval < R_S_INTERVAL )
-            {
-                // Check if AV dissociation is present 
-                nextClassification.actType = CheckAVDissociation(rPeaks, P, r);
-                cout << "CheckAVDissociation\n" << endl;                
-
-                if(nextClassification.actType == 1)
-                {
-                    cout << "SUPRAVENTRICULAR detected\n" << endl;
+                        if(nextClassification.actType == 1)
+                        {
+                            cout << "VENTRICULAR\n" << endl; // wykrywamy dysocjacje -> TU MA BYC VENTRICULAR
+                        }
+                        else 
+                        {
+                            cout << "DIFFERENT DISEASE\n" << endl; // nie ma dysocjacji -> chyba masz inna chorobe ziomus
+                        }
+                    }
+                    else
+                    {
+                        // jest ventricular 
+                        nextClassification.actType = VENTRICULAR;
+                        cout << "If greater than 60 it favours VERTICULAR" << endl;
+                    }
                 }
-                else{
-                    cout << "VENTRICULAR detected\n" << endl;
+                else {
+                    // waski
+                    // SVR
+                    cout << "SVR" << endl;
                 }
+                
+            } else { // artefakt
+                cout << "Artefakt" << endl;
+                // return ARTEFAKT
 
             }
-            else
-            {
-                // Ventricular activation detected 
-                nextClassification.actType = VENTRICULAR;
-                cout << "If greater than 60 it favours VERTICULAR" << endl;
-            }
-            */
 
             nextClassification.Ridx = r;
            

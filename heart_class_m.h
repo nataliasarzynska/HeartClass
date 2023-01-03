@@ -18,17 +18,12 @@
 //--------------------------------------------------------------------------------------
 /* Public types */
 
-enum correctEKG{
-    CORRETEKG = 0,        //< Ventricular activation
-    INCORRECT,       //< Supraventricular activation
-};
-
 /*
  * @brief           Possible types of detected activation
  */
 enum type{
-    VENTRICULAR = 0,        //< Ventricular activation
-    SUPRAVENTRICULAR,       //< Supraventricular activation
+    DIFF_DISEASE = 0,        //< Ventricular activation
+    VENTRICULAR,       //< Supraventricular activation
 };
 
 /*

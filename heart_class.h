@@ -21,8 +21,8 @@
  * @brief           Possible types of detected activation
  */
 enum type{
-    VENTRICULAR = 0,        //< Ventricular activation
-    SUPRAVENTRICULAR,       //< Supraventricular activation
+    VENTRICULAR = 1,        //< Ventricular activation
+    DIFF_DISEASE,       //< Supraventricular activation
 };
 
 /*
